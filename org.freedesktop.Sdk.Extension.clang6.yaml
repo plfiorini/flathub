@@ -1,0 +1,79 @@
+id: org.freedesktop.Sdk.Extension.clang6
+branch: "1.6"
+runtime: org.freedesktop.Sdk
+build-extension: true
+sdk: org.freedesktop.Sdk
+runtime-version: "1.6"
+appstream-compose: false
+separate-locales: false
+cleanup:
+  - /share/doc
+  - /share/info
+  - /share/man
+build-options:
+  cflags: -O2 -g
+  cxxflags: -O2 -g
+  env:
+    V: 1
+modules:
+  - name: llvm
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_INSTALL_PREFIX=/usr/lib/sdk/clang6
+      - -DLLVM_BUILD_LLVM_DYLIB=ON
+      - -DLLVM_LINK_LLVM_DYLIB=ON
+      - -DLLVM_INSTALL_UTILS=ON
+      - -DLLVM_ENABLE_RTTI=ON
+      - -DLLVM_ENABLE_FFI=ON
+      - -DLLVM_BUILD_TESTS=ON
+      - -DLLVM_BUILD_DOCS=ON
+      - -DLLVM_ENABLE_SPHINX=OFF
+      - -DLLVM_ENABLE_DOXYGEN=OFF
+      - -DFFI_INCLUDE_DIR=$(pkg-config --variable=includedir libffi)
+      - -DLLVM_BINUTILS_INCDIR=/usr/include
+    build-options:
+      arch:
+        i386:
+          config-opts:
+            - -DLLVM_HOST_TRIPLE=i586-unknown-linux-gnu
+        arm:
+          config-opts:
+            - -DLLVM_HOST_TRIPLE=arm-unknown-linux-gnueabi
+        x86_64:
+          config-opts:
+            -DLLVM_HOST_TRIPLE=x86_64-unknown-linux-gnu
+    subdir: llvm-6.0.0.src
+    sources:
+      - type: archive
+        url: https://releases.llvm.org/6.0.0/llvm-6.0.0.src.tar.xz
+        sha256: 1ff53c915b4e761ef400b803f07261ade637b0c269d99569f18040f3dcee4408
+      - type: patch
+        patch: patches/PR35947-export-LLVMInitializeInstCombine-as-extern-C.patch
+      - type: patch
+        patch: patches/PR36417-DebugInfo-discard-invalid-DBG_VALUE-instructions.patch
+      - type: patch
+        patch: patches/PR36417-fixup-for-rL326769-RegState-Debug-is-being-truncated.patch
+      - type: patch
+        patch: patches/D44391-export-LLVM_DYLIB_COMPONENTS-in-LLVMConfig.cmake.patch
+      - type: patch
+        patch: patches/D44420-cmake-fix-a-typo-in-llvm_config-macro.patch
+  - name: appdata
+    buildsystem: simple
+    build-commands:
+      - mkdir -p ${FLATPAK_DEST}/share/appdata
+      - cp org.freedesktop.Sdk.Extension.clang6.appdata.xml ${FLATPAK_DEST}/share/appdata
+      - appstream-compose  --basename=org.freedesktop.Sdk.Extension.clang6 --prefix=${FLATPAK_DEST} --origin=flatpak org.freedesktop.Sdk.Extension.clang6
+    sources:
+      - type: file
+        path: org.freedesktop.Sdk.Extension.clang6.appdata.xml
+  - name: scripts
+    buildsystem: simple
+    build-commands:
+      - cp *.sh /usr/lib/sdk/clang6/
+    sources:
+      - type: script
+        commands:
+          - export PATH=/usr/lib/sdk/clang6/bin:$PATH
+          - export CC=/usr/lib/sdk/clang6/bin/clang
+          - export CXX=/usr/lib/sdk/clang6/bin/clang++
+        dest-filename: enable.sh
